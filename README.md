@@ -4,41 +4,45 @@ FIFA World Cup 2026 4K/HDR canlı yayın kanalları — IPTV M3U tabanlı.
 
 ## Kurulum
 
-### Lokal test
+### 1. Lokal test
 
-```bash
+bash
 npm install
+cp .env.example .env      # .env dosyasını düzenle, M3U URL'lerini gir
 node index.js
-# → http://localhost:7000/manifest.json
-```
 
-Stremio’da: `http://localhost:7000/manifest.json` adresini “Install from URL” ile ekle.
 
-### Render.com deploy
+Stremio/Nuvio’da: http://localhost:7000/manifest.json
 
-1. GitHub’a push et
-1. Render’da **New Web Service** → repo bağla
-1. `render.yaml` otomatik algılanır
-1. Deploy sonrası: `https://XXX.onrender.com/manifest.json`
+### 2. Render.com deploy
 
-## M3U Kaynakları güncelleme
+1. GitHub’a push et (.env dosyası push edilmez — .gitignore’da)
+1. Render → *New Web Service* → repo bağla
+1. *Environment Variables* bölümüne ekle:
+- M3U_URL_1 → http://SUNUCU:8080/get.php?username=...&type=m3u_plus
+- M3U_URL_2 → (varsa ikinci URL)
+1. Deploy sonrası Stremio/Nuvio’ya ekle:
+   https://XXXXX.onrender.com/manifest.json
 
-`index.js` dosyasındaki `M3U_SOURCES` dizisini düzenle:
+## Komutlar
 
-```js
-const M3U_SOURCES = [
-  'http://SUNUCU:8080/get.php?username=USER&password=PASS&type=m3u_plus',
-];
-```
+|Alan         |Değer          |
+|-------------|---------------|
+|Build Command|npm install  |
+|Start Command|node index.js|
+|Environment  |Node           |
+|Plan         |Free           |
 
-## Kanal filtresi
+## Güvenlik
 
-`WC_CHANNEL_KEYWORDS` dizisine yeni anahtar kelime ekleyerek daha fazla kanal yakalayabilirsin.
+- Şifreler *asla* kod içine yazılmaz
+- .env dosyası .gitignore‘da — GitHub’a gitmez
+- Render’da şifreler *Environment Variables* olarak şifreli saklanır
 
 ## Özellikler
 
-- ✅ Birden fazla M3U kaynağı desteği
-- ✅ 30 dk cache (M3U her seferinde çekilmez)
-- ✅ Arama desteği (catalog’da search)
+- ✅ 4 adet M3U kaynağı desteği
+- ✅ Credential’lar .env / Render env vars ile güvenli
+- ✅ 30 dk cache
+- ✅ Katalogda arama
 - ✅ Tekrar kanal temizleme
-- ✅ Render.com free tier uyumlu
