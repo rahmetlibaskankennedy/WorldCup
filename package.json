@@ -1,16 +1,21 @@
 {
-  "name": "wc2026-live-addon",
-  "version": "1.0.0",
-  "description": "",
+  "name": "WorldCup4K",
+  "version": "1.0.1",
+  "description": "2026 Dünya Kupasındaki Maçları 4K Kalitede Sunan Stremio/Nuvio Eklentisi.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node index.js"
   },
-  "keywords": [],
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": ["stremio", "nuvio", "iptv", "worldcup", "fifa", "4k"],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^1.17.0",
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0",
     "stremio-addon-sdk": "^1.6.10"
   }
 }
