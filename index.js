@@ -10,7 +10,7 @@ const manifest = {
   id:          'community.wc2026.live',
   version:     '1.0.4',
   name:        '⚽ WorldCup 2026 4K',
-  description: 'FIFA World Cup 2026 — Resmi 4K/UHD yayıncı kanalları.',
+  description: '2026 Dünya Kupasındaki Maçları 4K Kalitede Sunan Stremio/Nuvio Eklentisi.',
   logo:        'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
   resources:   ['catalog', 'stream'],
   types:       ['tv'],
