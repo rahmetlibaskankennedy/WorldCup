@@ -1,41 +1,37 @@
 require('dotenv').config();
-const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
-const http  = require('http');
-const https = require('https');
-const url   = require('url');
+const { getRouter } = require('stremio-addon-sdk');
+const { addonBuilder } = require('stremio-addon-sdk');
+const express = require('express');
+const http    = require('http');
+const https   = require('https');
+const urlMod  = require('url');
 
 const ALL_CHANNELS = require('./channels.json');
 console.log(`📋 ${ALL_CHANNELS.length} WC2026 kanal yüklendi.`);
 
 // ─── IPTV SUNUCU BİLGİLERİ ────────────────────────────────────────
-// sport-birutv.my.id tokenlarını yenilemek için Stalker Portal API kullanılır.
-// MAC adresi channels.json URL'lerinden otomatik alınır.
-const IPTV_HOST  = 'sport-birutv.my.id';
-const IPTV_PORT  = 80;
-const IPTV_MAC   = '00:1A:79:65:FA:D4';
+const IPTV_HOST    = 'sport-birutv.my.id';
+const IPTV_PORT    = 80;
+const IPTV_MAC     = '00:1A:79:65:FA:D4';
+const TOKEN_TTL_MS = 4 * 60 * 1000; // 4 dakika
 
-// Token cache: { streamId -> { url, expiresAt } }
+// Token cache: streamId → { url, expiresAt }
 const tokenCache = new Map();
-const TOKEN_TTL_MS = 4 * 60 * 1000; // 4 dakika (token ömrü genelde 5dk)
 
 // ─── TOKEN YENİLEME ───────────────────────────────────────────────
 async function fetchFreshUrl(ch) {
-  // Sadece sport-birutv.my.id URL'leri için token yenile
   if (!ch.url.includes(IPTV_HOST)) return ch.url;
 
-  const parsed   = new url.URL(ch.url);
+  const parsed   = new urlMod.URL(ch.url);
   const streamId = parsed.searchParams.get('stream');
   if (!streamId) return ch.url;
 
-  // Cache'de geçerli token var mı?
   const cached = tokenCache.get(streamId);
   if (cached && Date.now() < cached.expiresAt) {
     console.log(`🔑 Cache hit: stream=${streamId}`);
     return cached.url;
   }
 
-  // Stalker Portal üzerinden yeni token iste
-  // GET /portal.php?action=create_link&type=itv&cmd=ffrt%20http://localhost/ch/{streamId}&series=&forced_storage=undefined&disable_ad=0&download=0&JsHttpRequest=1-xml
   const portalPath =
     `/portal.php?action=create_link&type=itv` +
     `&cmd=${encodeURIComponent(`ffrt http://localhost/ch/${streamId}`)}` +
@@ -49,9 +45,9 @@ async function fetchFreshUrl(ch) {
           port:     IPTV_PORT,
           path:     portalPath,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C)',
-            'Cookie':     `mac=${IPTV_MAC}; stb_lang=en; timezone=Europe%2FIstanbul`,
-            'Referer':    `http://${IPTV_HOST}/c/`,
+            'User-Agent':   'Mozilla/5.0 (QtEmbedded; U; Linux; C)',
+            'Cookie':       `mac=${IPTV_MAC}; stb_lang=en; timezone=Europe%2FIstanbul`,
+            'Referer':      `http://${IPTV_HOST}/c/`,
             'X-User-Agent': 'Model: MAG254; Link: WiFi',
           },
           timeout: 5000,
@@ -61,10 +57,8 @@ async function fetchFreshUrl(ch) {
           res.on('data', chunk => (data += chunk));
           res.on('end', () => {
             try {
-              // Yanıt: {"js":{"cmd":"ffmpeg http://...","streamer_id":...}}
-              // cmd prefix: "ffmpeg ", "ffrt ", veya doğrudan "http://"
-              const json = JSON.parse(data);
-              const cmd  = json?.js?.cmd || '';
+              const json   = JSON.parse(data);
+              const cmd    = json?.js?.cmd || '';
               const newUrl = cmd.replace(/^(ffmpeg|ffrt|vlc)\s+/i, '').trim();
               if (newUrl.startsWith('http')) resolve(newUrl);
               else reject(new Error('Geçersiz cmd: ' + cmd));
@@ -84,18 +78,19 @@ async function fetchFreshUrl(ch) {
 
   } catch (err) {
     console.warn(`⚠️  Token yenileme başarısız (stream=${streamId}): ${err.message}`);
-    // Hata durumunda eski URL'yi döndür
     return ch.url;
   }
 }
 
 // ─── MANIFEST ─────────────────────────────────────────────────────
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 10000}`;
+
 const fallback =
   'https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/2026_FIFA_World_Cup_emblem.svg/200px-2026_FIFA_World_Cup_emblem.svg.png';
 
 const manifest = {
   id:          'community.wc2026.live',
-  version:     '1.1.0',
+  version:     '1.2.0',
   name:        '⚽ WorldCup 2026 4K',
   description: 'FIFA World Cup 2026 — 4K UHD yayıncı kanalları.',
   logo:        'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
@@ -155,8 +150,7 @@ builder.defineMetaHandler(({ type, id }) => {
 
   return Promise.resolve({
     meta: {
-      id:          id,
-      type:        'tv',
+      id, type: 'tv',
       name:        ch.name,
       poster:      ch.logo || fallback,
       background:  ch.logo || fallback,
@@ -184,44 +178,107 @@ builder.defineStreamHandler(async ({ type, id }) => {
     return { streams: [] };
   }
 
-  // Taze URL al (token yenileme veya direkt URL)
+  // Taze URL al
   const streamUrl = await fetchFreshUrl(ch);
+  const isHls = streamUrl.includes('.m3u8');
 
-  // URL tipine göre davranış ipucu belirle
-  const isHls     = streamUrl.includes('.m3u8');
-  const isMpegTs  = streamUrl.includes('extension=ts') || streamUrl.includes('/play/live.php');
+  // sport-birutv TS akışlarını proxy üzerinden sun
+  const needsProxy = streamUrl.includes(IPTV_HOST);
+  const finalUrl = needsProxy
+    ? `${BASE_URL}/proxy/${idx}`
+    : streamUrl;
 
-  console.log(`▶️  Stream: ${ch.name} → ${streamUrl.slice(0, 60)}...`);
+  console.log(`▶️  Stream: ${ch.name} | proxy=${needsProxy} → ${finalUrl.slice(0, 70)}`);
 
   return {
-    streams: [
-      {
-        url:  streamUrl,
-        name: ch.name,
-        description: `🔴 CANLI • ${ch.group}`,
-        behaviorHints: {
-          // TS akışları web player'da çalışmaz, harici oynatıcıya gönder
-          notWebReady: isMpegTs && !isHls,
-          bingeGroup:  'wc2026-4k',
-        },
-        // Proxy geçişi için header ipuçları (Stremio bazı versiyonlarda destekler)
-        ...(isMpegTs && {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C)',
-            'Referer':    `http://${IPTV_HOST}/c/`,
-          },
-        }),
+    streams: [{
+      url:  finalUrl,
+      name: ch.name,
+      description: `🔴 CANLI • ${ch.group}`,
+      behaviorHints: {
+        notWebReady: !isHls,
+        bingeGroup:  'wc2026-4k',
       },
-    ],
+    }],
   };
 });
 
-// ─── SUNUCU ───────────────────────────────────────────────────────
-const PORT = process.env.PORT || 7000;
-serveHTTP(builder.getInterface(), { port: PORT });
-console.log(`🚀 WC 2026 Addon → http://localhost:${PORT}/manifest.json`);
+// ─── EXPRESS + PROXY ──────────────────────────────────────────────
+const app = express();
 
-// ─── KEEP-ALIVE (Render free tier için) ───────────────────────────
+// Stremio addon router'ını bağla
+app.use('/', getRouter(builder.getInterface()));
+
+// Proxy endpoint: GET /proxy/:idx
+app.get('/proxy/:idx', async (req, res) => {
+  const idx = parseInt(req.params.idx, 10);
+  const ch  = ALL_CHANNELS[idx];
+  if (!ch) return res.status(404).send('Kanal bulunamadı');
+
+  let targetUrl;
+  try {
+    targetUrl = await fetchFreshUrl(ch);
+  } catch (e) {
+    return res.status(502).send('Token alınamadı');
+  }
+
+  console.log(`🔀 Proxy: [${idx}] ${ch.name} → ${targetUrl.slice(0, 60)}...`);
+
+  const parsed  = new urlMod.URL(targetUrl);
+  const isHttps = parsed.protocol === 'https:';
+  const lib     = isHttps ? https : http;
+
+  const proxyReq = lib.get(
+    {
+      hostname: parsed.hostname,
+      port:     parsed.port || (isHttps ? 443 : 80),
+      path:     parsed.pathname + parsed.search,
+      headers: {
+        'User-Agent':   'Mozilla/5.0 (QtEmbedded; U; Linux; C)',
+        'Referer':      `http://${IPTV_HOST}/c/`,
+        'X-User-Agent': 'Model: MAG254; Link: WiFi',
+        // İstemcinin Range header'ını ilet (seek desteği)
+        ...(req.headers.range ? { 'Range': req.headers.range } : {}),
+      },
+      timeout: 10000,
+    },
+    (upRes) => {
+      // Durum kodunu ve content-type'ı ilet
+      res.writeHead(upRes.statusCode, {
+        'Content-Type':  upRes.headers['content-type']  || 'video/mp2t',
+        'Content-Length': upRes.headers['content-length'] || '',
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*',
+      });
+      upRes.pipe(res);
+      upRes.on('error', (e) => {
+        console.warn(`🔀 Proxy upstream hata: ${e.message}`);
+        res.destroy();
+      });
+    }
+  );
+
+  proxyReq.on('error', (e) => {
+    console.warn(`🔀 Proxy bağlantı hatası: ${e.message}`);
+    if (!res.headersSent) res.status(502).send('Upstream bağlantı hatası');
+  });
+
+  proxyReq.on('timeout', () => {
+    proxyReq.destroy();
+    if (!res.headersSent) res.status(504).send('Upstream timeout');
+  });
+
+  req.on('close', () => proxyReq.destroy());
+});
+
+// ─── SUNUCU BAŞLAT ────────────────────────────────────────────────
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`🚀 WC 2026 Addon → ${BASE_URL}/manifest.json`);
+  console.log(`🔀 Proxy aktif → ${BASE_URL}/proxy/:idx`);
+});
+
+// ─── KEEP-ALIVE ───────────────────────────────────────────────────
 if (process.env.RENDER_EXTERNAL_URL) {
   const pingUrl = process.env.RENDER_EXTERNAL_URL + '/manifest.json';
   setInterval(() => {
