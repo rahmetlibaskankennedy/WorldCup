@@ -61,11 +61,11 @@ async function fetchFreshUrl(ch) {
           res.on('data', chunk => (data += chunk));
           res.on('end', () => {
             try {
-              // Yanıt: {"js":{"cmd":"http://...","streamer_id":...}}
+              // Yanıt: {"js":{"cmd":"ffmpeg http://...","streamer_id":...}}
+              // cmd prefix: "ffmpeg ", "ffrt ", veya doğrudan "http://"
               const json = JSON.parse(data);
               const cmd  = json?.js?.cmd || '';
-              // "ffrt http://..." formatından URL çıkar
-              const newUrl = cmd.replace(/^ffrt\s+/, '').trim();
+              const newUrl = cmd.replace(/^(ffmpeg|ffrt|vlc)\s+/i, '').trim();
               if (newUrl.startsWith('http')) resolve(newUrl);
               else reject(new Error('Geçersiz cmd: ' + cmd));
             } catch (e) {
