@@ -4,13 +4,16 @@ const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 const ALL_CHANNELS = require('./channels.json');
 console.log(`📋 ${ALL_CHANNELS.length} WC2026 kanal yüklendi.`);
 
+const fallback =
+  'https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/2026_FIFA_World_Cup_emblem.svg/200px-2026_FIFA_World_Cup_emblem.svg.png';
+
 const manifest = {
   id:          'community.wc2026.live',
-  version:     '1.0.5',
-  name:        '⚽ WorldCup 4K',
+  version:     '1.0.6',
+  name:        '⚽ WorldCup 2026 FHD',
   description: 'FIFA World Cup 2026 — FHD yayıncı kanalları.',
   logo:        'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
-  resources:   ['catalog', 'stream'],
+  resources:   ['catalog', 'meta', 'stream'],   // meta EKLENDİ
   types:       ['tv'],
   catalogs: [
     {
@@ -38,10 +41,7 @@ builder.defineCatalogHandler(({ type, id, extra }) => {
         c.group.toLowerCase().includes(query))
     : ALL_CHANNELS;
 
-  const fallback =
-    'https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/2026_FIFA_World_Cup_emblem.svg/200px-2026_FIFA_World_Cup_emblem.svg.png';
-
-  const metas = list.map((ch, i) => ({
+  const metas = list.map((ch) => ({
     id:          `wc2026:${ALL_CHANNELS.indexOf(ch)}`,
     type:        'tv',
     name:        ch.name,
@@ -56,13 +56,37 @@ builder.defineCatalogHandler(({ type, id, extra }) => {
   return Promise.resolve({ metas });
 });
 
+// ─── META ─────────────────────────────────────────────────────────
+builder.defineMetaHandler(({ type, id }) => {
+  console.log(`📄 Meta isteği: type=${type} id=${id}`);
+
+  if (type !== 'tv' || !id.startsWith('wc2026:'))
+    return Promise.resolve({ meta: null });
+
+  const idx = parseInt(id.split(':')[1], 10);
+  const ch  = ALL_CHANNELS[idx];
+  if (!ch) return Promise.resolve({ meta: null });
+
+  return Promise.resolve({
+    meta: {
+      id:          id,
+      type:        'tv',
+      name:        ch.name,
+      poster:      ch.logo || fallback,
+      background:  ch.logo || fallback,
+      logo:        ch.logo || fallback,
+      genres:      [ch.group],
+      description: `${ch.group} • 🔴 CANLI`,
+    },
+  });
+});
+
 // ─── STREAM ───────────────────────────────────────────────────────
 builder.defineStreamHandler(({ type, id }) => {
   console.log(`🎬 Stream isteği: type=${type} id=${id}`);
 
   if (type !== 'tv') return Promise.resolve({ streams: [] });
 
-  // id formatı: "wc2026:0" veya "wc2026%3A0" (URL encoded)
   const cleanId = decodeURIComponent(id);
   if (!cleanId.startsWith('wc2026:')) return Promise.resolve({ streams: [] });
 
@@ -74,7 +98,7 @@ builder.defineStreamHandler(({ type, id }) => {
     return Promise.resolve({ streams: [] });
   }
 
-  console.log(`▶️  Stream: ${ch.name} → ${ch.url.substring(0, 60)}`);
+  console.log(`▶️  Stream: ${ch.name}`);
   return Promise.resolve({
     streams: [{
       url:  ch.url,
