@@ -4,7 +4,7 @@ const { addonBuilder } = require('stremio-addon-sdk');
 const express = require('express');
 const http    = require('http');
 const https   = require('https');
-const urlMod  = require('url');
+const urlMod = require('url');
 
 const ALL_CHANNELS = require('./channels.json');
 console.log(`📋 ${ALL_CHANNELS.length} WC2026 kanal yüklendi.`);
@@ -15,7 +15,7 @@ const IPTV_PORT    = 80;
 const IPTV_MAC     = '00:1A:79:65:FA:D4';
 const TOKEN_TTL_MS = 4 * 60 * 1000; // 4 dakika
 
-// Portal istekleri için keep-alive destekli HTTP agent
+// Portal token isteklerini hafifleten keep-alive agent
 const httpKeepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 50, keepAliveMsecs: 1000 });
 
 // Token cache: streamId → { url, expiresAt }
@@ -94,7 +94,7 @@ const fallback =
 
 const manifest = {
   id:          'community.wc2026.live',
-  version:     '1.3.0',
+  version:     '1.4.0',
   name:        '⚽ WorldCup 2026 4K',
   description: 'FIFA World Cup 2026 — 4K UHD yayıncı kanalları.',
   logo:        'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
@@ -165,7 +165,7 @@ builder.defineMetaHandler(({ type, id }) => {
   });
 });
 
-// ─── STREAM (YENİLENEN KISIM) ─────────────────────────────────────
+// ─── STREAM ───────────────────────────────────────────────────────
 builder.defineStreamHandler(async ({ type, id }) => {
   console.log(`🎬 Stream isteği: type=${type} id=${id}`);
 
@@ -182,20 +182,25 @@ builder.defineStreamHandler(async ({ type, id }) => {
     return { streams: [] };
   }
 
-  // Taze portal URL'sini alıyoruz
-  const finalUrl = await fetchFreshUrl(ch);
-  const isHls = finalUrl.includes('.m3u8');
+  // Taze URL üretimi
+  const streamUrl = await fetchFreshUrl(ch);
+  const isHls = streamUrl.includes('.m3u8');
 
-  // PROXY BYPASS: Trafiği Render üzerinden geçirmeden direkt cihaza teslim ediyoruz.
+  // Stremio/VLC oynatıcılarına cihaz başlığını (User-Agent) zorla enjekte ediyoruz
+  const formatArg = streamUrl.includes('?') ? '&' : '?';
+  const finalUrl = streamUrl.includes(IPTV_HOST)
+    ? `${streamUrl}${formatArg}http-user-agent=${encodeURIComponent('Mozilla/5.0 (QtEmbedded; U; Linux; C)')}`
+    : streamUrl;
+
   console.log(`▶️  Direct Stream: ${ch.name} | proxy=false → ${finalUrl.slice(0, 70)}`);
 
   return {
     streams: [{
       url:  finalUrl,
       name: ch.name,
-      description: `🔴 CANLI • ${ch.group} (Direkt Bağlantı)`,
+      description: `🔴 CANLI • ${ch.group} (Direct/No-Proxy)`,
       behaviorHints: {
-        notWebReady: !isHls,
+        notWebReady: !isHls, // MPEG-TS akışları için tarayıcı oynatıcılarını kapatır, harici oynatıcıyı tetikler
         bingGroup:  'wc2026-4k',
       },
     }],
@@ -205,8 +210,6 @@ builder.defineStreamHandler(async ({ type, id }) => {
 // ─── EXPRESS SUNUCU BAŞLAT ────────────────────────────────────────
 const app = express();
 app.use('/', getRouter(builder.getInterface()));
-
-// Not: Eski /proxy/:idx endpoint'i veri merkezlerinin IP blokajını aşmak adına tamamen kaldırılmıştır.
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
