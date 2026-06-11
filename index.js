@@ -47,7 +47,7 @@ const manifest = {
   version: '1.0.1',
   name: '⚽ WorldCup 4K',
   description: '2026 Dünya Kupasındaki Maçları 4K Kalitede Sunan Stremio/Nuvio Eklentisi.',
-  logo: 'https://en.wikipedia.org/wiki/1994_FIFA_World_Cup#/media/File:1994_FIFA_World_Cup.svg',
+  logo: 'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
   resources: ['catalog', 'stream'],
   types: ['tv'],
   catalogs: [
