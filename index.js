@@ -1,16 +1,14 @@
 require('dotenv').config();
 const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 
-// ─── KANAL LİSTESİ (WC2026 gerçek 4K yayıncıları) ────────────────
 const ALL_CHANNELS = require('./channels.json');
-console.log(`📋 ${ALL_CHANNELS.length} WC2026 4K kanal yüklendi.`);
+console.log(`📋 ${ALL_CHANNELS.length} WC2026 kanal yüklendi.`);
 
-// ─── MANIFEST ─────────────────────────────────────────────────────
 const manifest = {
   id:          'community.wc2026.live',
-  version:     '1.0.4',
-  name:        '⚽ WorldCup 2026 4K',
-  description: '2026 Dünya Kupasındaki Maçları 4K Kalitede Sunan Stremio/Nuvio Eklentisi.',
+  version:     '1.0.5',
+  name:        '⚽ WorldCup 4K',
+  description: 'FIFA World Cup 2026 — FHD yayıncı kanalları.',
   logo:        'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
   resources:   ['catalog', 'stream'],
   types:       ['tv'],
@@ -18,16 +16,17 @@ const manifest = {
     {
       type: 'tv',
       id:   'wc2026_live',
-      name: '⚽ WC 2026 — 4K Yayıncılar',
+      name: '⚽ WC 2026 — FHD Yayıncılar',
       extra: [{ name: 'search', isRequired: false }],
     },
   ],
+  idPrefixes: ['wc2026:'],
   behaviorHints: { adult: false, configurable: false },
 };
 
 const builder = new addonBuilder(manifest);
 
-// ─── CATALOG HANDLER ──────────────────────────────────────────────
+// ─── CATALOG ──────────────────────────────────────────────────────
 builder.defineCatalogHandler(({ type, id, extra }) => {
   if (type !== 'tv' || id !== 'wc2026_live')
     return Promise.resolve({ metas: [] });
@@ -50,29 +49,37 @@ builder.defineCatalogHandler(({ type, id, extra }) => {
     background:  ch.logo || fallback,
     logo:        ch.logo || fallback,
     genres:      [ch.group],
-    description: `${ch.group} • 🔴 CANLI • 4K/HDR`,
+    description: `${ch.group} • 🔴 CANLI`,
   }));
 
-  console.log(`📂 Catalog → ${metas.length} kanal (search="${query}")`);
+  console.log(`📂 Catalog → ${metas.length} kanal`);
   return Promise.resolve({ metas });
 });
 
-// ─── STREAM HANDLER ───────────────────────────────────────────────
+// ─── STREAM ───────────────────────────────────────────────────────
 builder.defineStreamHandler(({ type, id }) => {
-  if (type !== 'tv' || !id.startsWith('wc2026:'))
-    return Promise.resolve({ streams: [] });
+  console.log(`🎬 Stream isteği: type=${type} id=${id}`);
 
-  const idx = parseInt(id.split(':')[1], 10);
+  if (type !== 'tv') return Promise.resolve({ streams: [] });
+
+  // id formatı: "wc2026:0" veya "wc2026%3A0" (URL encoded)
+  const cleanId = decodeURIComponent(id);
+  if (!cleanId.startsWith('wc2026:')) return Promise.resolve({ streams: [] });
+
+  const idx = parseInt(cleanId.split(':')[1], 10);
   const ch  = ALL_CHANNELS[idx];
 
-  if (!ch?.url) return Promise.resolve({ streams: [] });
+  if (!ch?.url) {
+    console.warn(`⚠️  Kanal bulunamadı: idx=${idx}`);
+    return Promise.resolve({ streams: [] });
+  }
 
-  console.log(`▶️  Stream: ${ch.name}`);
+  console.log(`▶️  Stream: ${ch.name} → ${ch.url.substring(0, 60)}`);
   return Promise.resolve({
     streams: [{
       url:  ch.url,
       name: ch.name,
-      description: `🔴 CANLI • 4K/HDR\n${ch.group}`,
+      description: `🔴 CANLI • ${ch.group}`,
       behaviorHints: { notWebReady: false },
     }],
   });
@@ -83,7 +90,6 @@ const PORT = process.env.PORT || 7000;
 serveHTTP(builder.getInterface(), { port: PORT });
 console.log(`🚀 WC 2026 Addon → http://localhost:${PORT}/manifest.json`);
 
-// ─── KEEP-ALIVE (Render Free Plan) ────────────────────────────────
 if (process.env.RENDER_EXTERNAL_URL) {
   const https = require('https');
   const pingUrl = process.env.RENDER_EXTERNAL_URL + '/manifest.json';
