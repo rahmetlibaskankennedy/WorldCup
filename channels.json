@@ -3,98 +3,84 @@
     "name": "TR- TRT 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=916657&extension=ts&play_token=X85tHZtCLz"
   },
   {
     "name": "AR- BEIN 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/bein/BEIN4.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=2034168&extension=ts&play_token=ms7mVDMVLG"
   },
   {
     "name": "AR- BEIN 4Kᵁᴴᴰ (2)",
     "logo": "http://51.158.145.100/picons/logos/bein/BEIN4.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=2034168&extension=ts&play_token=ms7mVDMVLG"
   },
   {
     "name": "DE- FUSSBALL 1 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=2090204&extension=ts&play_token=XGTY4cvrBQ"
   },
   {
     "name": "DE- FUSSBALL 2 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=2090203&extension=ts&play_token=iysgWwaOAc"
   },
   {
     "name": "DE- FUSSBALL 3 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=2090202&extension=ts&play_token=aOhoDiNMHp"
   },
   {
     "name": "FR- M6 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=526148&extension=ts&play_token=Iry4y3G87A"
   },
   {
     "name": "ES- LA 1 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=1620282&extension=ts&play_token=Opilny3bun"
   },
   {
     "name": "RO- DİGİ 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=1632122&extension=ts&play_token=mCLO5hWpiL"
   },
   {
     "name": "SE- V SPORT 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=1632123&extension=ts&play_token=nmIdtzJkFF"
   },
   {
     "name": "UK- SKY SPORTS 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=1471387&extension=ts&play_token=25XfeWElfm"
   },
   {
     "name": "UK- SKY SPORTS F1 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=1471382&extension=ts&play_token=hDnsAjrMQB"
   },
   {
     "name": "PL- LOVE NATURE 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "http://sport-birutv.my.id:80/play/live.php?mac=00:1A:79:65:FA:D4&stream=1131804&extension=ts&play_token=4GaFSAgtco"
   },
   {
     "name": "UK- LOVE NATURE 4Kᵁᴴᴰ",
     "logo": "http://51.158.145.100/picons/logos/LOGOSNEW/4K.png",
     "group": "4K UHD 3840P",
-    "tvgId": "",
     "url": "https://pb-ehs1glsha1juy.akamaized.net/v1/manifest/3722c60a815c199d9c0ef36c5b73da68a62b09d1/pb-ehs1glsha1juy/f2141f37-1f48-475b-ba54-b9efb62346db/0.m3u8"
   }
 ]
