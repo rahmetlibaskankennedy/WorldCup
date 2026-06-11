@@ -45,9 +45,9 @@ const WC_CHANNEL_KEYWORDS = [
 const manifest = {
   id: 'community.wc2026.live',
   version: '1.0.1',
-  name: '⚽ WC 2026 Live 4K',
-  description: 'FIFA World Cup 2026 — 4K/HDR canlı yayın kanalları (IPTV M3U)',
-  logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/2026_FIFA_World_Cup_emblem.svg/200px-2026_FIFA_World_Cup_emblem.svg.png',
+  name: '⚽ WorldCup 4K',
+  description: '2026 Dünya Kupasındaki Maçları 4K Kalitede Sunan Stremio/Nuvio Eklentisi.',
+  logo: 'https://en.wikipedia.org/wiki/1994_FIFA_World_Cup#/media/File:1994_FIFA_World_Cup.svg',
   resources: ['catalog', 'stream'],
   types: ['tv'],
   catalogs: [
