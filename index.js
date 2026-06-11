@@ -15,9 +15,8 @@ const IPTV_PORT    = 80;
 const IPTV_MAC     = '00:1A:79:65:FA:D4';
 const TOKEN_TTL_MS = 4 * 60 * 1000; // 4 dakika
 
-// Keep-Alive desteği ile bağlantıların kopmasını önleyen kalıcı HTTP Agent'ları
-const httpKeepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 100, keepAliveMsecs: 1000 });
-const httpsKeepAliveAgent = new https.Agent({ keepAlive: true, maxSockets: 100, keepAliveMsecs: 1000 });
+// Portal istekleri için keep-alive destekli HTTP agent
+const httpKeepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 50, keepAliveMsecs: 1000 });
 
 // Token cache: streamId → { url, expiresAt }
 const tokenCache = new Map();
@@ -95,7 +94,7 @@ const fallback =
 
 const manifest = {
   id:          'community.wc2026.live',
-  version:     '1.2.0',
+  version:     '1.3.0',
   name:        '⚽ WorldCup 2026 4K',
   description: 'FIFA World Cup 2026 — 4K UHD yayıncı kanalları.',
   logo:        'https://i.pinimg.com/736x/f8/08/31/f80831dc0605cd3b553f7e2cd18e2631.jpg',
@@ -166,7 +165,7 @@ builder.defineMetaHandler(({ type, id }) => {
   });
 });
 
-// ─── STREAM ───────────────────────────────────────────────────────
+// ─── STREAM (YENİLENEN KISIM) ─────────────────────────────────────
 builder.defineStreamHandler(async ({ type, id }) => {
   console.log(`🎬 Stream isteği: type=${type} id=${id}`);
 
@@ -183,18 +182,18 @@ builder.defineStreamHandler(async ({ type, id }) => {
     return { streams: [] };
   }
 
-  const streamUrl = await fetchFreshUrl(ch);
-  const isHls = streamUrl.includes('.m3u8');
-  const needsProxy = streamUrl.includes(IPTV_HOST);
-  const finalUrl = needsProxy ? `${BASE_URL}/proxy/${idx}` : streamUrl;
+  // Taze portal URL'sini alıyoruz
+  const finalUrl = await fetchFreshUrl(ch);
+  const isHls = finalUrl.includes('.m3u8');
 
-  console.log(`▶️  Stream: ${ch.name} | proxy=${needsProxy} → ${finalUrl.slice(0, 70)}`);
+  // PROXY BYPASS: Trafiği Render üzerinden geçirmeden direkt cihaza teslim ediyoruz.
+  console.log(`▶️  Direct Stream: ${ch.name} | proxy=false → ${finalUrl.slice(0, 70)}`);
 
   return {
     streams: [{
       url:  finalUrl,
       name: ch.name,
-      description: `🔴 CANLI • ${ch.group}`,
+      description: `🔴 CANLI • ${ch.group} (Direkt Bağlantı)`,
       behaviorHints: {
         notWebReady: !isHls,
         bingGroup:  'wc2026-4k',
@@ -203,89 +202,15 @@ builder.defineStreamHandler(async ({ type, id }) => {
   };
 });
 
-// ─── EXPRESS + PROXY ──────────────────────────────────────────────
+// ─── EXPRESS SUNUCU BAŞLAT ────────────────────────────────────────
 const app = express();
-
 app.use('/', getRouter(builder.getInterface()));
 
-app.get('/proxy/:idx', async (req, res) => {
-  const idx = parseInt(req.params.idx, 10);
-  const ch  = ALL_CHANNELS[idx];
-  if (!ch) return res.status(404).send('Kanal bulunamadı');
+// Not: Eski /proxy/:idx endpoint'i veri merkezlerinin IP blokajını aşmak adına tamamen kaldırılmıştır.
 
-  let targetUrl;
-  try {
-    // Çakışmayı önlemek için burada doğrudan önbelleğe (cache) güveniyoruz
-    targetUrl = await fetchFreshUrl(ch);
-  } catch (e) {
-    return res.status(502).send('Token alınamadı');
-  }
-
-  console.log(`🔀 Proxy: [${idx}] ${ch.name} → ${targetUrl.slice(0, 60)}...`);
-
-  const parsed  = new urlMod.URL(targetUrl);
-  const isHttps = parsed.protocol === 'https:';
-  const lib     = isHttps ? https : http;
-  const currentAgent = isHttps ? httpsKeepAliveAgent : httpKeepAliveAgent;
-
-  const proxyReq = lib.get(
-    {
-      hostname: parsed.hostname,
-      port:     parsed.port || (isHttps ? 443 : 80),
-      path:     parsed.pathname + parsed.search,
-      agent:    currentAgent, // Kalıcı TCP bağlantısı kurarak paket düşmesini önler
-      headers: {
-        'User-Agent':   'Mozilla/5.0 (QtEmbedded; U; Linux; C)',
-        'Referer':      `http://${IPTV_HOST}/c/`,
-        'X-User-Agent': 'Model: MAG254; Link: WiFi',
-        ...(req.headers.range ? { 'Range': req.headers.range } : {}),
-      },
-      timeout: 15000, // 4K yayınların ilk yüklenme süresi için süre 15 saniyeye uzatıldı
-    },
-    (upRes) => {
-      // 4K yayınlardaki kısmi veri akışları (200 veya 206) dışındaki hataları yakala
-      if (upRes.statusCode >= 400) {
-        console.error(`⚠️ Upstream hata kodu döndürdü: ${upRes.statusCode}`);
-        if (!res.headersSent) res.status(upRes.statusCode).send('Yayın bulunamadı veya kapalı');
-        return;
-      }
-
-      res.writeHead(upRes.statusCode, {
-        'Content-Type':  upRes.headers['content-type']  || 'video/mp2t',
-        'Content-Length': upRes.headers['content-length'] || '',
-        'Accept-Ranges': 'bytes',
-        'Access-Control-Allow-Origin': '*',
-      });
-
-      // Kesintisiz yüksek veri akışı aktarımı
-      upRes.pipe(res);
-
-      upRes.on('error', (e) => {
-        console.warn(`🔀 Proxy upstream hata: ${e.message}`);
-        res.destroy();
-      });
-    }
-  );
-
-  proxyReq.on('error', (e) => {
-    console.warn(`🔀 Proxy bağlantı hatası: ${e.message}`);
-    if (!res.headersSent) res.status(502).send('Upstream bağlantı hatası');
-  });
-
-  proxyReq.on('timeout', () => {
-    proxyReq.destroy();
-    if (!res.headersSent) res.status(504).send('Upstream timeout');
-  });
-
-  // Oynatıcı kapatıldığında ya da kanal değiştirildiğinde eski bağlantıyı hemen imha et
-  req.on('close', () => proxyReq.destroy());
-});
-
-// ─── SUNUCU BAŞLAT ────────────────────────────────────────────────
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 WC 2026 Addon → ${BASE_URL}/manifest.json`);
-  console.log(`🔀 Proxy aktif → ${BASE_URL}/proxy/:idx`);
+  console.log(`🚀 WC 2026 Addon Ready → ${BASE_URL}/manifest.json`);
 });
 
 // ─── KEEP-ALIVE ───────────────────────────────────────────────────
